@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TajniGrad: Dalj</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0b0e14;
+            --bg-card: #141923;
+            --gold: #d4af37;
+            --gold-hover: #f3ce5b;
+            --teal: #2dd4bf;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Gornja traka */
+        header {
+            background: rgba(20, 25, 35, 0.95);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            gap: 8px;
+        }
+
+        .brand {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .brand h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 1.05rem;
+            color: var(--gold);
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .admin-badge {
+            display: none;
+            background: var(--danger);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .progress-badge {
+            font-size: 0.78rem;
+            color: var(--teal);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-top {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(45, 212, 191, 0.15));
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 7px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-top.help-btn {
+            border-color: var(--text-muted);
+            color: var(--text-main);
+            background: rgba(148, 163, 184, 0.1);
+            padding: 7px 9px;
+        }
+
+        .btn-top.bonus {
+            border-color: var(--teal);
+            color: var(--teal);
+            background: rgba(45, 212, 191, 0.12);
+        }
+
+        .btn-top.bonus.solved {
+            background: rgba(45, 212, 191, 0.25);
+        }
+
+        .btn-top:active {
+            transform: scale(0.96);
+        }
+
+        /* Karta */
+        #map {
+            flex: 1;
+            width: 100%;
+            z-index: 1;
+            background: #090b10;
+        }
+
+        /* Plutajuće kontrole na karti */
+        .map-controls {
+            position: absolute;
+            bottom: 24px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .control-btn {
+            pointer-events: auto;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            padding: 10px 14px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .control-btn.active {
+            background: var(--teal);
+            color: #0b0e14;
+            border-color: var(--teal);
+            font-weight: 600;
+        }
+
+        #demoBtn {
+            display: none;
+            border-color: var(--danger);
+        }
+
+        #demoBtn.active {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
+        }
+
+        /* Status GPS-a */
+        .gps-banner {
+            position: absolute;
+            top: 66px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 25, 35, 0.92);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            z-index: 999;
+            white-space: nowrap;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Modali */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 8, 12, 0.88);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            z-index: 2000;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            animation: fadeIn 0.25s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-card {
+            background: var(--bg-card);
+            border: 1px solid var(--gold);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            padding: 22px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+            max-height: 88dvh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-tag {
+            display: inline-block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--teal);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .modal-title {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .modal-text {
+            font-size: 0.94rem;
+            line-height: 1.6;
+            color: var(--text-main);
+            margin-bottom: 18px;
+        }
+
+        /* Koraci u uputama */
+        .guide-step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+            background: rgba(11, 14, 20, 0.75);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+            align-items: flex-start;
+        }
+
+        .guide-icon {
+            font-size: 1.4rem;
+            min-width: 30px;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .guide-content h4 {
+            color: var(--gold);
+            font-size: 0.92rem;
+            margin-bottom: 3px;
+        }
+
+        .guide-content p {
+            color: var(--text-muted);
+            font-size: 0.83rem;
+            line-height: 1.45;
+        }
+
+        .riddle-input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            background: #0b0e14;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .riddle-input:focus {
+            border-color: var(--teal);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, var(--gold), #b59021);
+            color: #0b0e14;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        /* Ruksak i artefakti */
+        .artifact-item {
+            background: rgba(11, 14, 20, 0.8);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .artifact-item.locked {
+            opacity: 0.45;
+            border-color: rgba(148, 163, 184, 0.2);
+        }
+
+        .artifact-icon {
+            font-size: 1.8rem;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .artifact-info h4 {
+            color: var(--gold);
+            font-size: 0.95rem;
+            margin-bottom: 3px;
+        }
+
+        .artifact-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        /* Poruka uspomene na kraju */
+        .memory-box {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(212, 175, 55, 0.25);
+        }
+
+        .saved-note {
+            background: rgba(45, 212, 191, 0.1);
+            border-left: 3px solid var(--teal);
+            padding: 10px 12px;
+            font-style: italic;
+            font-size: 0.88rem;
+            margin-top: 10px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Admin panel u ruksaku */
+        .admin-panel {
+            display: none;
+            margin-top: 14px;
+            padding: 12px;
+            border: 1px dashed var(--danger);
+            border-radius: 10px;
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .admin-panel h5 {
+            color: var(--danger);
+            font-size: 0.82rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .admin-btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-admin-sm {
+            flex: 1;
+            padding: 7px;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            border: 1px solid var(--danger);
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        /* Prilagođene ikone na karti */
+        .custom-pin {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+        }
+
+        .custom-pin.solved {
+            background: var(--teal);
+            border-color: #fff;
+            color: #0b0e14;
+            box-shadow: 0 0 15px rgba(45, 212, 191, 0.7);
+        }
+
+        .player-pin {
+            width: 18px;
+            height: 18px;
+            background: #38bdf8;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand" id="brandTrigger" title="TajniGrad: Dalj">
+            <h1>TajniGrad: Dalj <span class="admin-badge" id="adminBadge">ADMIN</span></h1>
+            <div class="progress-badge" id="progressText">Tajne: 0 / 5</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-top help-btn" onclick="openHelp()" title="Upute za igru">
+                ❓
+            </button>
+            <button class="btn-top bonus" id="bonusBtn" onclick="openBonus()">
+                🍇 Bonus
+            </button>
+            <button class="btn-top" onclick="openBackpack()">
+                🎒 (<span id="artifactCount">0</span>/5)
+            </button>
+        </div>
+    </header>
+
+    <div class="gps-banner" id="gpsStatus">Tražim GPS signal u Dalju...</div>
+
+    <div id="map"></div>
+
+    <div class="map-controls">
+        <button class="control-btn" id="demoBtn" onclick="toggleDemoMode()">
+            🛋️ Demo: OFF
+        </button>
+        <div style="flex:1;"></div>
+        <button class="control-btn" onclick="centerOnPlayer()">
+            🎯 Centriraj na mene
+        </button>
+    </div>
+
+    <!-- Modal za upute -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeModal('helpModal')">&times;</button>
+            <span class="modal-tag">Vodič za istraživače</span>
+            <h2 class="modal-title">Dobrodošli u TajniGrad: Dalj</h2>
+            <p class="modal-text" style="margin-bottom: 14px; font-size: 0.88rem;">
+                Otkrij skrivene priče, znanstvenu povijest i kulturnu baštinu Dalja kroz interaktivnu terensku potragu.
+            </p>
+
+            <div class="guide-step">
+                <div class="guide-icon">🛰️</div>
+                <div class="guide-content">
+                    <h4>1. Dopusti pristup lokaciji (GPS)</h4>
+                    <p>Plava točka na karti prati tvoje kretanje kroz Dalj u stvarnom vremenu.</p>
+                </div>
+            </div>
+
+            <div class="guide-step">
+                <div class="guide-icon">📍</div>
+                <div class="guide-content">
+                    <h4>2. Obiđi 4 označene postaje</h4>
+                    <p>Prošeći do zlatnih krugova na karti. Kada uđeš unutar označenog radijusa, dodirni broj postaje za otvaranje zagonetke.</p>
+                </div>
+            </div>
+
+            <div class="guide-step">
+                <div class="guide-icon">🍇</div>
+                <div class="guide-content">
+                    <h4>3. Riješi Bonus zagonetku</h4>
+                    <p>Gumb <b>Bonus</b> u gornjem izborniku možeš otvoriti i riješiti bilo gdje, neovisno o GPS lokaciji.</p>
+                </div>
+            </div>
+
+            <div class="guide-step">
+                <div class="guide-icon">🎒</div>
+                <div class="guide-content">
+                    <h4>4. Skupi svih 5 artefakata</h4>
+                    <p>Za svaki točan odgovor osvajaš virtualni artefakt u <b>Ruksaku</b>. Na kraju potrage možeš upisati svoju trajnu uspomenu iz Dalja.</p>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="closeHelpAndSave()">Započni potragu</button>
+        </div>
+    </div>
+
+    <!-- Modal za postaje i bonus zagonetku -->
+    <div class="modal-overlay" id="stationModal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeModal('stationModal')">&times;</button>
+            <span class="modal-tag" id="mTag">Postaja</span>
+            <h2 class="modal-title" id="mTitle">Naslov</h2>
+            <div class="modal-text" id="mBody">Tekst zagonetke...</div>
+            
+            <div id="riddleForm">
+                <input type="text" id="answerInput" class="riddle-input" placeholder="Upiši svoj odgovor..." autocomplete="off">
+                <div class="error-msg" id="errorMsg">Odgovor nije točan. Pokušaj ponovno!</div>
+                <button class="btn-primary" onclick="checkAnswer()">Otključaj tajnu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal za Ruksak -->
+    <div class="modal-overlay" id="backpackModal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeModal('backpackModal')">&times;</button>
+            <span class="modal-tag">Inventar istraživača</span>
+            <h2 class="modal-title">Tvoj Ruksak (5 tajni)</h2>
+            <div id="artifactsList"></div>
+            
+            <div class="admin-panel" id="adminPanel">
+                <h5>🛠️ Admin kontrole</h5>
+                <div class="admin-btn-group">
+                    <button class="btn-admin-sm" onclick="adminSolveAll()">Otključaj sve (5/5)</button>
+                    <button class="btn-admin-sm" onclick="disableAdminMode()">Izađi iz Admina</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 16px; text-align: center;">
+                <button onclick="resetProgress()" style="background:none; border:none; color:#64748b; font-size:0.75rem; text-decoration:underline; cursor:pointer;">
+                    Resetiraj cijelu igru
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal za Admin PIN -->
+    <div class="modal-overlay" id="adminPinModal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeModal('adminPinModal')">&times;</button>
+            <span class="modal-tag">Sustav za testiranje</span>
+            <h2 class="modal-title">Admin pristup</h2>
+            <p class="modal-text" style="font-size:0.88rem;">Upiši administratorski PIN za aktivaciju Demo načina rada s kauča.</p>
+            <input type="password" id="adminPinInput" class="riddle-input" placeholder="Unesi PIN..." inputmode="numeric">
+            <div class="error-msg" id="pinErrorMsg">Neispravan PIN!</div>
+            <button class="btn-primary" onclick="verifyAdminPin()">Aktiviraj Admin Mode</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const ADMIN_PIN = "1505";
+
+        const mapStations = [
+            {
+                id: 1,
+                title: "Kuća putnika kroz vrijeme",
+                locationName: "Kulturni i znanstveni centar Milutin Milanković",
+                lat: 45.4857,
+                lng: 18.9894,
+                radius: 35,
+                riddle: "Stojiš pred rodnom kućom velikana koji je izračunao kako Zemlja pleše oko Sunca i kada dolaze ledena doba. U njegovom vrtu uz obalu Dunava još uvijek raste stari živi svjedok zasađen davne 1879. godine. Koje je vrste to stablo?",
+                answers: ["crni bor", "bor"],
+                artifact: {
+                    name: "Nebeski kompas",
+                    icon: "🧭",
+                    desc: "Astronomski instrument koji pokazuje cikluse Zemljine putanje oko Sunca."
+                },
+                nextHint: "Sljedeći trag vodi te u središte mjesta, pred Saborni hram sv. Dimitrija."
+            },
+            {
+                id: 2,
+                title: "Sjena rimskog kastela",
+                locationName: "Saborni hram sv. Dimitrija",
+                lat: 45.4840,
+                lng: 18.9870,
+                radius: 30,
+                riddle: "Prije dvije tisuće godina ovdje su koračali rimski legionari čuvajući granicu na Dunavu pod imenom Teutoburgium. Pogledaj najveći pravoslavni hram u Hrvatskoj ispred sebe ili informativnu ploču i upiši godinu njegove izgradnje ili obnove.",
+                answers: ["1715", "1799", "1837", "1840", "1901", "1931", "1989", "2006"],
+                artifact: {
+                    name: "Daljski idol",
+                    icon: "🗿",
+                    desc: "Tajanstvena prapovijesna figurica pronađena na obalama Dunava u Dalju."
+                },
+                nextHint: "Za sljedeću tajnu prođi pokraj Patrijaršijskog dvora prema šetnici uz Dunav."
+            },
+            {
+                id: 3,
+                title: "Šapat velike rijeke",
+                locationName: "Šetnica uz Dunav kod Patrijaršijskog dvora",
+                lat: 45.4844,
+                lng: 18.9885,
+                radius: 30,
+                riddle: "Prođi pokraj Patrijaršijskog dvora prema velikoj rijeci koja teče pored Dalja već tisućama godina. Okreni se prema ljetnoj rezidenciji patrijarha i upiši tajnu riječ: DUNAV",
+                answers: ["dunav"],
+                artifact: {
+                    name: "Kruna Teutoburgiuma",
+                    icon: "👑",
+                    desc: "Simbol čuvara tajni Dalja i drevne dunavske granice."
+                },
+                nextHint: "Sada kreni prema Ulici Braće Radića gdje te čeka neogotička katolička crkva sv. Josipa."
+            },
+            {
+                id: 4,
+                title: "Zvonik neogotike",
+                locationName: "Katolička župna crkva sv. Josipa (Ul. Braće Radića 9)",
+                lat: 45.4883,
+                lng: 18.9896,
+                radius: 35,
+                riddle: "Stojiš pred katoličkom župnom crkvom u Dalju, čiji visoki neogotički zvonik krasi ovo mjesto još od 1912. godine. Upiši ime sveca kojem je ova crkva posvećena (zaštitnika radnika i obitelji).",
+                answers: ["sveti josip", "sv. josip", "sv josip", "josip", "josipu", "svetom josipu", "sv. josipu"],
+                artifact: {
+                    name: "Ključ župe sv. Josipa",
+                    icon: "🗝️",
+                    desc: "Simbol katoličke baštine, obnove i stoljetne povijesti župe u Dalju."
+                },
+                nextHint: "Sve terenske postaje su otkrivene! Ne zaboravi riješiti i Bonus zagonetku u gornjem izborniku."
+            }
+        ];
+
+        const bonusChallenge = {
+            id: 5,
+            title: "Zlatna kap Daljske planine",
+            locationName: "Bonus zagonetka (bez lokacije)",
+            riddle: "Stoljećima na osunčanim padinama Daljske planine iznad Dunava katolici i pravoslavni zajedno obrađuju vinograde, slaveći sv. Vinka i čuvajući stare podrume u lesu. Kako se zove to čuveno tekuće blago ovoga kraja?",
+            answers: ["vino", "grožđe", "grozdje", "graševina", "grasevina", "bijelo vino", "crno vino"],
+            artifact: {
+                name: "Pehar Daljske planine",
+                icon: "🍇",
+                desc: "Zlatni pehar posvećen tisućljetnoj vinogradarskoj tradiciji i zajedništvu Dalja."
+            },
+            nextHint: "Sjajno! Uspješno si otkrio priču o vinogradarskoj tradiciji Dalja."
+        };
+
+        const allChallenges = [...mapStations, bonusChallenge];
+
+        let gameState = JSON.parse(localStorage.getItem('tajniDaljStateV2')) || {
+            solved: [],
+            memoryNote: "",
+            seenGuide: false
+        };
+
+        let isAdmin = sessionStorage.getItem('tajniDaljAdmin') === 'true';
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === '1') {
+            isAdmin = true;
+            sessionStorage.setItem('tajniDaljAdmin', 'true');
+        }
+
+        let playerPos = null;
+        let demoMode = false;
+        let currentChallenge = null;
+
+        // Upravljanje uputama
+        function openHelp() {
+            openModal('helpModal');
+        }
+
+        function closeHelpAndSave() {
+            gameState.seenGuide = true;
+            saveGame();
+            closeModal('helpModal');
+        }
+
+        // Automatski prikaži upute samo pri prvom pokretanju
+        if (!gameState.seenGuide) {
+            window.addEventListener('DOMContentLoaded', () => {
+                openHelp();
+            });
+        }
+
+        // Tajni klik 5x na naslov za Admin PIN
+        let tapCount = 0;
+        let tapTimer = null;
+        document.getElementById('brandTrigger').addEventListener('click', () => {
+            if (isAdmin) return;
+            tapCount++;
+            clearTimeout(tapTimer);
+            tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
+            if (tapCount >= 5) {
+                tapCount = 0;
+                document.getElementById('pinErrorMsg').style.display = 'none';
+                document.getElementById('adminPinInput').value = '';
+                openModal('adminPinModal');
+            }
+        });
+
+        function verifyAdminPin() {
+            const val = document.getElementById('adminPinInput').value.trim();
+            if (val === ADMIN_PIN) {
+                isAdmin = true;
+                sessionStorage.setItem('tajniDaljAdmin', 'true');
+                closeModal('adminPinModal');
+                applyAdminUI();
+            } else {
+                document.getElementById('pinErrorMsg').style.display = 'block';
+            }
+        }
+
+        function disableAdminMode() {
+            isAdmin = false;
+            demoMode = false;
+            sessionStorage.removeItem('tajniDaljAdmin');
+            applyAdminUI();
+            closeModal('backpackModal');
+        }
+
+        function applyAdminUI() {
+            const badge = document.getElementById('adminBadge');
+            const demoBtn = document.getElementById('demoBtn');
+            const adminPanel = document.getElementById('adminPanel');
+
+            if (isAdmin) {
+                badge.style.display = 'inline-block';
+                demoBtn.style.display = 'flex';
+                adminPanel.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+                demoBtn.style.display = 'none';
+                demoBtn.classList.remove('active');
+                demoBtn.innerText = "🛋️ Demo: OFF";
+                adminPanel.style.display = 'none';
+            }
+        }
+
+        // Inicijalizacija karte centrirane na Dalj
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView([45.4862, 18.9885], 15);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        let playerMarker = null;
+        let stationMarkers = {};
+        let stationCircles = {};
+
+        function renderStations() {
+            mapStations.forEach(st => {
+                const isSolved = gameState.solved.includes(st.id);
+
+                if (stationMarkers[st.id]) map.removeLayer(stationMarkers[st.id]);
+                if (stationCircles[st.id]) map.removeLayer(stationCircles[st.id]);
+
+                const iconHtml = `<div class="custom-pin ${isSolved ? 'solved' : ''}">${isSolved ? '✓' : st.id}</div>`;
+                const customIcon = L.divIcon({
+                    html: iconHtml,
+                    className: '',
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17]
+                });
+
+                const marker = L.marker([st.lat, st.lng], { icon: customIcon }).addTo(map);
+                marker.on('click', () => handleMapStationClick(st));
+                stationMarkers[st.id] = marker;
+
+                const circle = L.circle([st.lat, st.lng], {
+                    color: isSolved ? '#2dd4bf' : '#d4af37',
+                    fillColor: isSolved ? '#2dd4bf' : '#d4af37',
+                    fillOpacity: 0.12,
+                    weight: 1,
+                    radius: st.radius
+                }).addTo(map);
+                stationCircles[st.id] = circle;
+            });
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const count = gameState.solved.length;
+            document.getElementById('progressText').innerText = `Tajne: ${count} / ${allChallenges.length}`;
+            document.getElementById('artifactCount').innerText = count;
+
+            const bonusBtn = document.getElementById('bonusBtn');
+            if (gameState.solved.includes(bonusChallenge.id)) {
+                bonusBtn.classList.add('solved');
+                bonusBtn.innerText = "🍇 Bonus ✓";
+            } else {
+                bonusBtn.classList.remove('solved');
+                bonusBtn.innerText = "🍇 Bonus";
+            }
+        }
+
+        function updatePlayerLocation(lat, lng, isSimulated = false) {
+            playerPos = { lat, lng };
+
+            if (!playerMarker) {
+                const pIcon = L.divIcon({
+                    html: '<div class="player-pin"></div>',
+                    className: '',
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
+                });
+                playerMarker = L.marker([lat, lng], { icon: pIcon, zIndexOffset: 1000 }).addTo(map);
+            } else {
+                playerMarker.setLatLng([lat, lng]);
+            }
+
+            const banner = document.getElementById('gpsStatus');
+            if (isSimulated) {
+                banner.innerText = "🛋️ ADMIN DEMO: Klikni na kartu za pomicanje";
+                banner.style.color = "#ef4444";
+            } else {
+                banner.innerText = "🛰️ GPS aktivan u stvarnom vremenu";
+                banner.style.color = "#94a3b8";
+            }
+        }
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    if (!demoMode) {
+                        updatePlayerLocation(pos.coords.latitude, pos.coords.longitude, false);
+                    }
+                },
+                (err) => {
+                    if (!demoMode) {
+                        document.getElementById('gpsStatus').innerText = "⚠️ Uključi GPS lokaciju na mobitelu za igru";
+                    }
+                },
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+            );
+        }
+
+        map.on('click', (e) => {
+            if (isAdmin && demoMode) {
+                updatePlayerLocation(e.latlng.lat, e.latlng.lng, true);
+            }
+        });
+
+        function toggleDemoMode() {
+            if (!isAdmin) return;
+            demoMode = !demoMode;
+            const btn = document.getElementById('demoBtn');
+            if (demoMode) {
+                btn.classList.add('active');
+                btn.innerText = "🛋️ Demo: ON";
+                if (!playerPos) {
+                    updatePlayerLocation(45.4862, 18.9885, true);
+                } else {
+                    updatePlayerLocation(playerPos.lat, playerPos.lng, true);
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.innerText = "🛋️ Demo: OFF";
+                document.getElementById('gpsStatus').innerText = "Tražim stvarni GPS signal...";
+                document.getElementById('gpsStatus').style.color = "#94a3b8";
+            }
+        }
+
+        function centerOnPlayer() {
+            if (playerPos) {
+                map.setView([playerPos.lat, playerPos.lng], 17);
+            } else {
+                map.setView([45.4862, 18.9885], 15);
+                alert("Još nemamo tvoju GPS lokaciju. Provjeri jesu li lokacijske usluge uključene.");
+            }
+        }
+
+        function getDistanceMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const p1 = lat1 * Math.PI / 180;
+            const p2 = lat2 * Math.PI / 180;
+            const dp = (lat2 - lat1) * Math.PI / 180;
+            const dl = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+                      Math.cos(p1) * Math.cos(p2) *
+                      Math.sin(dl / 2) * Math.sin(dl / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return Math.round(R * c);
+        }
+
+        function handleMapStationClick(st) {
+            currentChallenge = st;
+            const isSolved = gameState.solved.includes(st.id);
+
+            document.getElementById('mTag').innerText = `Postaja ${st.id} • ${st.locationName}`;
+            document.getElementById('mTitle').innerText = st.title;
+            document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('answerInput').value = '';
+
+            if (isSolved) {
+                showSolvedContent(st);
+                openModal('stationModal');
+                return;
+            }
+
+            if (!playerPos) {
+                document.getElementById('mBody').innerHTML = `
+                    <p>Tvoja GPS lokacija još nije učitana. Provjeri jesu li lokacijske usluge uključene na mobitelu kako bi se zagonetka otključala kada dođeš do lokacije.</p>
+                `;
+                document.getElementById('riddleForm').style.display = 'none';
+                openModal('stationModal');
+                return;
+            }
+
+            const dist = getDistanceMeters(playerPos.lat, playerPos.lng, st.lat, st.lng);
+
+            if (dist <= st.radius) {
+                document.getElementById('mBody').innerHTML = `<p>${st.riddle}</p>`;
+                document.getElementById('riddleForm').style.display = 'block';
+            } else {
+                document.getElementById('mBody').innerHTML = `
+                    <p>Još si predaleko od ove lokacije da bi se zagonetka otključala.</p>
+                    <p style="margin-top:10px; color:var(--gold); font-weight:600;">
+                        Udaljenost do cilja: ${dist} metara (potrebno doći unutar ${st.radius} m).
+                    </p>
+                `;
+                document.getElementById('riddleForm').style.display = 'none';
+            }
+
+            openModal('stationModal');
+        }
+
+        function openBonus() {
+            currentChallenge = bonusChallenge;
+            const isSolved = gameState.solved.includes(bonusChallenge.id);
+
+            document.getElementById('mTag').innerText = bonusChallenge.locationName;
+            document.getElementById('mTitle').innerText = bonusChallenge.title;
+            document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('answerInput').value = '';
+
+            if (isSolved) {
+                showSolvedContent(bonusChallenge);
+            } else {
+                document.getElementById('mBody').innerHTML = `<p>${bonusChallenge.riddle}</p>`;
+                document.getElementById('riddleForm').style.display = 'block';
+            }
+
+            openModal('stationModal');
+        }
+
+        function checkAnswer() {
+            if (!currentChallenge) return;
+            const rawInput = document.getElementById('answerInput').value.trim().toLowerCase().replace(/\.+$/, '');
+            
+            if (currentChallenge.answers.includes(rawInput)) {
+                if (!gameState.solved.includes(currentChallenge.id)) {
+                    gameState.solved.push(currentChallenge.id);
+                    saveGame();
+                    renderStations();
+                }
+                showSolvedContent(currentChallenge);
+            } else {
+                document.getElementById('errorMsg').style.display = 'block';
+            }
+        }
+
+        function showSolvedContent(item) {
+            document.getElementById('riddleForm').style.display = 'none';
+            let html = `
+                <div style="background:rgba(45,212,191,0.1); border:1px solid var(--teal); padding:14px; border-radius:12px; margin-bottom:14px; text-align:center;">
+                    <div style="font-size:2.4rem; margin-bottom:6px;">${item.artifact.icon}</div>
+                    <div style="color:var(--teal); font-size:0.8rem; text-transform:uppercase; font-weight:600;">Otključan artefakt</div>
+                    <div style="color:var(--gold); font-family:'Cinzel',serif; font-size:1.15rem; margin:4px 0;">${item.artifact.name}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted);">${item.artifact.desc}</div>
+                </div>
+                <p style="font-size:0.92rem; color:var(--text-main);">${item.nextHint}</p>
+            `;
+
+            if (gameState.solved.length === allChallenges.length) {
+                html += `
+                    <div class="memory-box">
+                        <h4 style="color:var(--gold); margin-bottom:6px; font-size:0.95rem;">🏆 Čestitamo! Otkrio si svih 5 tajni Dalja!</h4>
+                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:10px;">
+                            Upiši svoju trajnu uspomenu na ovu avanturu (ostaje spremljena u ovom pregledniku).
+                        </p>
+                        <input type="text" id="memoryInput" class="riddle-input" placeholder="Npr. Šetnja Daljem, studeni 2026..." value="${gameState.memoryNote || ''}">
+                        <button class="btn-primary" onclick="saveMemory()">Spremi uspomenu</button>
+                        ${gameState.memoryNote ? `<div class="saved-note">"${gameState.memoryNote}"</div>` : ''}
+                    </div>
+                `;
+            }
+
+            document.getElementById('mBody').innerHTML = html;
+        }
+
+        function saveMemory() {
+            const note = document.getElementById('memoryInput').value.trim();
+            gameState.memoryNote = note;
+            saveGame();
+            showSolvedContent(currentChallenge);
+        }
+
+        function openBackpack() {
+            const list = document.getElementById('artifactsList');
+            list.innerHTML = '';
+
+            allChallenges.forEach(item => {
+                const isSolved = gameState.solved.includes(item.id);
+                list.innerHTML += `
+                    <div class="artifact-item ${isSolved ? '' : 'locked'}">
+                        <div class="artifact-icon">${isSolved ? item.artifact.icon : '🔒'}</div>
+                        <div class="artifact-info">
+                            <h4>${isSolved ? item.artifact.name : 'Neotkriveni artefakt'}</h4>
+                            <p>${isSolved ? item.artifact.desc : `Riješi izazov "${item.title}" za otključavanje.`}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (gameState.memoryNote) {
+                list.innerHTML += `
+                    <div class="saved-note">
+                        <b>Tvoja uspomena:</b> "${gameState.memoryNote}"
+                    </div>
+                `;
+            }
+
+            openModal('backpackModal');
+        }
+
+        function adminSolveAll() {
+            if (!isAdmin) return;
+            gameState.solved = allChallenges.map(c => c.id);
+            saveGame();
+            renderStations();
+            openBackpack();
+        }
+
+        function saveGame() {
+            localStorage.setItem('tajniDaljStateV2', JSON.stringify(gameState));
+        }
+
+        function resetProgress() {
+            if (confirm("Želiš li obrisati sav napredak i krenuti ispočetka?")) {
+                gameState = { solved: [], memoryNote: "", seenGuide: true };
+                saveGame();
+                renderStations();
+                closeModal('backpackModal');
+            }
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        document.getElementById('answerInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        document.getElementById('adminPinInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                verifyAdminPin();
+            }
+        });
+
+        applyAdminUI();
+        renderStations();
+    </script>
+</body>
+</html>
